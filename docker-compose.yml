@@ -1,0 +1,52 @@
+services:
+  ollama:
+    build:
+      context: ./docker/ollama        # Directorul Dockerfile-ului pentru Ollama
+    container_name: aso-ollama        
+    ports:
+      - "11434:11434"                 # Expune API-ul Ollama catre host
+    volumes:
+      - ollama_data:/root/.ollama     # Persistenta 
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia          # Activeaza GPU 
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - aso-network                    
+
+  mcp-server:
+    build:
+      context: .                       # Radacina proiectului ca context
+      dockerfile: ./docker/mcp-server/Dockerfile
+    container_name: aso-mcp-server
+    ports:
+      - "8000:8000"                    # Expune serverul MCP
+    volumes:
+      - ./data:/data:ro                # Directorul administrat, montat read-only
+    depends_on:
+      - ollama                         # Asteapta ca Ollama sa fie initializat
+    networks:
+      - aso-network
+
+  adk-web:
+    build:
+      context: .                       # Foloseste Dockerfile-ul pentru agentul ADK Web
+      dockerfile: ./docker/adk-web/Dockerfile
+    container_name: aso-adk-web
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ollama                         # Are nevoie de LLM
+      - mcp-server                     # Are nevoie de MCP server
+    networks:
+      - aso-network
+
+networks:
+  aso-network:
+    driver: bridge                     # Retea locala intre containere
+
+volumes:
+  ollama_data:                         # Volum persistent pentru Ollama
