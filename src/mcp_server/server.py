@@ -1,10 +1,13 @@
+import os
+
 from mcp.server.fastmcp import FastMCP
 from mcp_server.tools import get_file_content, list_directory, search_file, check_flag_guess
 
-mcp = FastMCP("aso-filesystem-manager")
-
-
-
+mcp = FastMCP(
+    "aso-filesystem-manager",
+    host=os.getenv("MCP_HOST", "0.0.0.0"),
+    port=int(os.getenv("MCP_PORT", "8000")),
+)
 
 
 
@@ -105,11 +108,6 @@ def verify_flag(guess: str) -> bool:
 
 
 if __name__ == "__main__":
-    import uvicorn
+    # Serve the tools over SSE (the transport used by the ADK agent)
+    mcp.run(transport="sse")
     
-    uvicorn.run(
-        mcp.sse_app,  # Aplicatia SSE expusa de FastMCP
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
-    )

@@ -1,10 +1,11 @@
 import os
 
-# Ollama 
-os.environ["OLLAMA_API_BASE"] = "http://ollama:11434"
+# Ollama endpoint used by LiteLLM (inside the Docker network by default)
+os.environ.setdefault("OLLAMA_API_BASE", "http://ollama:11434")
 
-# Model
-MODEL_NAME = "ollama_chat/qwen2.5:7b"
+# Model served by Ollama; must match OLLAMA_MODEL in docker-compose / .env
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+MODEL_NAME = f"ollama_chat/{OLLAMA_MODEL}"
 
 MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://mcp-server:8000/sse")
 

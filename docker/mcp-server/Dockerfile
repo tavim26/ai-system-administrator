@@ -17,9 +17,5 @@ VOLUME ["/data"]
 # Expune portul MCP
 EXPOSE 8000
 
-# Variabile folosite de serverul FastMCP
-ENV MCP_HOST=0.0.0.0
-ENV MCP_PORT=8000
-
 # Porneste serverul MCP prin modulul Python
 CMD ["python", "-m", "mcp_server.server"]

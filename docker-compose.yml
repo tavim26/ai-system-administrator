@@ -1,52 +1,63 @@
 services:
   ollama:
     build:
-      context: ./docker/ollama        # Directorul Dockerfile-ului pentru Ollama
-    container_name: aso-ollama        
-    ports:
-      - "11434:11434"                 # Expune API-ul Ollama catre host
+      context: ./docker/ollama
+    container_name: aso-ollama
+    environment:
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b}"
+      OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-8192}"
     volumes:
-      - ollama_data:/root/.ollama     # Persistenta 
+      - ollama_data:/root/.ollama        # Persist downloaded models
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia          # Activeaza GPU 
+            - driver: nvidia             # Requires NVIDIA driver + Container Toolkit
               count: 1
               capabilities: [gpu]
+    healthcheck:
+      # Healthy only after the model has been pulled
+      test: ["CMD-SHELL", "ollama list | grep -q \"$$OLLAMA_MODEL\""]
+      interval: 10s
+      timeout: 5s
+      retries: 180                        # Up to ~30 min for the first download
+      start_period: 30s
     networks:
-      - aso-network                    
+      - aso-network
 
   mcp-server:
     build:
-      context: .                       # Radacina proiectului ca context
+      context: .
       dockerfile: ./docker/mcp-server/Dockerfile
     container_name: aso-mcp-server
-    ports:
-      - "8000:8000"                    # Expune serverul MCP
+    environment:
+      FLAG: "${FLAG:?Set FLAG in .env (see .env.example)}"
+      DATA_DIR: /data
     volumes:
-      - ./data:/data:ro                # Directorul administrat, montat read-only
-    depends_on:
-      - ollama                         # Asteapta ca Ollama sa fie initializat
+      - ./data:/data:ro                   # Managed directory, read-only
     networks:
       - aso-network
 
   adk-web:
     build:
-      context: .                       # Foloseste Dockerfile-ul pentru agentul ADK Web
+      context: .
       dockerfile: ./docker/adk-web/Dockerfile
     container_name: aso-adk-web
+    environment:
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5:7b}"
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"             # Web UI, reachable only from this machine
     depends_on:
-      - ollama                         # Are nevoie de LLM
-      - mcp-server                     # Are nevoie de MCP server
+      ollama:
+        condition: service_healthy
+      mcp-server:
+        condition: service_started
     networks:
       - aso-network
 
 networks:
   aso-network:
-    driver: bridge                     # Retea locala intre containere
+    driver: bridge
 
 volumes:
-  ollama_data:                         # Volum persistent pentru Ollama
+  ollama_data:

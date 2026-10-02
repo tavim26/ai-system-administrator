@@ -1,13 +1,11 @@
 from pathlib import Path
+import hmac
 import os
 
-
-# Directorul administrat
-BASE_DIR = Path(__file__).parent.parent.parent / "data"
-
-#resolve() pt normalizare si a obtine cale absoluta
-BASE_DIR = BASE_DIR.resolve()
-
+# Managed directory. In Docker it is mounted at /data
+# Locally it falls back to <project_root>/data.
+_DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data"
+BASE_DIR = Path(os.getenv("DATA_DIR", _DEFAULT_DATA_DIR)).resolve()
 
 FLAG_FILENAME = "flag.txt"
 
@@ -203,30 +201,29 @@ def search_file(filename: str) -> list[str]:
 
 
 
+def _load_flag() -> str:
+    """Return the secret flag: FLAG env var first, data/flag.txt as a local fallback."""
+    env_flag = os.getenv("FLAG", "").strip()
+    if env_flag:
+        return env_flag
+
+    flag_path = BASE_DIR / FLAG_FILENAME
+    if flag_path.is_file():
+        return flag_path.read_text(encoding="utf-8").strip()
+
+    raise RuntimeError(
+        "No flag configured. Set the FLAG environment variable (see .env.example)."
+    )
+
+
 def check_flag_guess(guess: str) -> bool:
     """
-    Check whether the provided guess matches the secret flag stored in flag.txt.
+    Check whether a guess matches the secret flag.
 
-    The comparison is:
-    - case-insensitive
-    - whitespace trimmed
-    - secure (the function never returns the actual flag value)
-    
-    Args:
-        guess (str): The proposed value for the flag.
-
-    Returns:
-        bool: True if the guess matches the flag, False otherwise.
-
-    Raises:
-        FileNotFoundError: If flag.txt is missing.
+    The comparison is case-insensitive, ignores surrounding whitespace and
+    never returns the flag itself.
     """
-    flag_path = BASE_DIR / FLAG_FILENAME
-
-    if not flag_path.exists():
-        raise FileNotFoundError("flag.txt is missing from the managed directory.")
-
-    with open(flag_path, "r", encoding="utf-8") as f:
-        real_flag = f.read().strip()
-
-    return guess.strip().upper() == real_flag.upper()
+    real_flag = _load_flag()
+    normalized_guess = guess.strip().upper().encode("utf-8")
+    normalized_flag = real_flag.upper().encode("utf-8")
+    return hmac.compare_digest(normalized_guess, normalized_flag)

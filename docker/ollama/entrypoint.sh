@@ -1,12 +1,17 @@
 #!/bin/bash
+set -e
 
-# Porneste serverul Ollama in background
+# Start the Ollama server in the background
 ollama serve &
+SERVER_PID=$!
 
-# Asteapta ca serverul sa porneasca
-sleep 5
+# Wait until the server responds (instead of a fixed sleep)
+until ollama list >/dev/null 2>&1; do
+  sleep 1
+done
 
-# Descarca modelul
-ollama pull qwen2.5:7b
+# Pull the model (no-op if it is already in the volume)
+ollama pull "${OLLAMA_MODEL:-qwen2.5:7b}"
 
-wait
+# Keep the container running as long as the server runs
+wait $SERVER_PID
