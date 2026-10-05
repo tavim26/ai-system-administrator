@@ -4,8 +4,6 @@ An AI agent that acts as a **read-only system administrator** for a sandboxed di
 
 The agent runs entirely locally: a language model served by **Ollama**, orchestrated with **Google ADK**, with filesystem access provided through an **MCP (Model Context Protocol)** server.
 
-> University project: *[Course name]*, *[University / Faculty]*, *[Year]*
-
 ---
 
 ## Table of Contents
